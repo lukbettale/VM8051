@@ -1,0 +1,13 @@
+General:
+* Add documentation
+* Port to autoconf tools
+
+Library:
+* Serial port communication
+* External interrupts
+* Power modes
+
+Virtual Machine:
+* Generic option management
+* User-friendly bit toggle
+

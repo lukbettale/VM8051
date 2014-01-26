@@ -15,6 +15,7 @@
    You should have received a copy of the GNU Lesser General Public License
    along with VM8051.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
 
@@ -192,35 +193,6 @@ void reset8051 (struct vm8051 *vm)
   interrupts_blocked = 0;
 
   cycles = 0;
-}
-
-int init8051 (struct vm8051 *vm, char *progname)
-{
-  uint32_t i;
-  int c = 0;
-  FILE *program;
-
-  assert (vm != NULL);
-
-  program = fopen (progname, "rb");
-  if (program != NULL)
-    {
-      for (i = 0; i < 65536; i++)
-        {
-          c = fgetc (program);
-          if (c == EOF)
-            break;
-          _code[i] = (uint8_t) c;
-        }
-      fclose (program);
-      c = i;
-      for (; i < 65536; i++)
-        _code[i] = 0;
-    }
-
-  reset8051 (vm);
-
-  return c;
 }
 
 /* run the current instruction */

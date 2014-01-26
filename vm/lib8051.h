@@ -23,7 +23,6 @@
 
 #include "lib8051defs.h"
 
-extern int init8051 (struct vm8051 *vm, char *progname);
 extern size_t inst8051 (struct vm8051 *vm, uint8_t *inst, uint16_t addr);
 extern void reset8051 (struct vm8051 *vm);
 extern void fetch8051 (struct vm8051 *vm);

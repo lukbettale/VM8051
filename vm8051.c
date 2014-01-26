@@ -24,6 +24,7 @@
 
 #include <vm/lib8051.h>
 #include <print/lib8051print.h>
+#include <utils/libhexbin.h>
 
 /* simulate global variables for a struct vm8051 *vm */
 #include <vm/lib8051globals.h>
@@ -478,6 +479,8 @@ int main (int argc, char *argv[])
 {
   int minimal = 0;
   struct vm8051 *vm;
+  FILE *program;
+
   if (argc > 1)
     {
       if (strcmp (argv[1], "-m") == 0)
@@ -494,8 +497,13 @@ int main (int argc, char *argv[])
     }
   vm = malloc (sizeof (struct vm8051));
   assert (vm != NULL);
-  if (init8051 (vm, argv[1]) > 0)
-    run8051 (vm, atoi (argv[2]), minimal);
+
+  program = fopen (argv[1], "rb");
+  if (program != NULL && read_bin (_code, program) > 0)
+    {
+      reset8051 (vm);
+      run8051 (vm, atoi (argv[2]), minimal);
+    }
   else
     fprintf (stderr, "%s: empty program\n", argv[1]);
   free (vm);

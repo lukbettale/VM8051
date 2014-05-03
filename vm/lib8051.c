@@ -24,6 +24,12 @@
 /* simulate global variables for a struct vm8051 *vm */
 #include "lib8051globals.h"
 
+#ifndef PURE_8051
+extern void operate_coprocessors (struct vm8051 *vm);
+#else
+#define operate_coprocessors(vm)
+#endif
+
 #define GO_ISR(I,E,P) ((E) && (I) && (!interrupted || (P)))
 
 int32_t get_timer0 (struct vm8051 *vm)
@@ -586,6 +592,10 @@ void operate8051 (struct vm8051 *vm)
           break;
         }
     }
+
+  /* ask the coprocessors to do their thing */
+  operate_coprocessors (vm);
+
   /* timer(s) increment */
   if (TR0)
     {

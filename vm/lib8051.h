@@ -23,6 +23,21 @@
 
 #include "lib8051defs.h"
 
+/* 8051 virtual machine */
+struct vm8051
+{
+  uint32_t cycles;
+  uint8_t _data[256];
+  uint8_t _sfr[128];
+  uint8_t _xdata[65536];
+  uint8_t _code[65536];
+  uint8_t IR[4];
+  uint16_t PC;
+  uint8_t interrupted;
+  uint8_t interrupts_blocked;
+  void *coprocessors; /* to extend 8051 with coprocessors */
+};
+
 extern size_t inst8051 (struct vm8051 *vm, uint8_t *inst, uint16_t addr);
 extern void reset8051 (struct vm8051 *vm);
 extern void fetch8051 (struct vm8051 *vm);

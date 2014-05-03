@@ -23,6 +23,8 @@
 #include <string.h>
 
 #include <vm/lib8051.h>
+#include <vm/lib8051coprocessors.h>
+#include <copros/copro_RNG.h>
 #include <print/lib8051print.h>
 #include <utils/libhexbin.h>
 
@@ -47,6 +49,17 @@ static void dump8051_data (struct vm8051 *vm)
   for (int i = 0; i < 256; i++)
     {
       printf ("%02X ", _data[i]);
+      if ((i & 0x0F) == 0x0F)
+        printf ("\n");
+    }
+}
+
+static void dump8051_sfr (struct vm8051 *vm)
+{
+  printf ("\nSFR:\n");
+  for (int i = 0; i < 128; i++)
+    {
+      printf ("%02X ", _sfr[i]);
       if ((i & 0x0F) == 0x0F)
         printf ("\n");
     }
@@ -315,7 +328,7 @@ static int array_remove (int len, unsigned int *array, unsigned int elt)
   return -1;
 }
 
-static void run8051 (struct vm8051 *vm, clock_t period, int minimal)
+static void run8051 (struct vm8051 *vm, int minimal)
 {
   int i;
   char info[80] = "";
@@ -333,147 +346,139 @@ static void run8051 (struct vm8051 *vm, clock_t period, int minimal)
 
   while (!end)
     {
-      if (period)
+      unsigned int address = -1;
+      unsigned int ncy = 0;
+      char opcode[6];
+      uint8_t next_IR[4];
+
+      if (command != 'i' && command != 'x')
+        dump8051 (vm, minimal);
+      printf (info);
+      printf ("\n> ");
+      info[0] = 0;
+      command = fgetc (stdin);
+
+      switch (command)
         {
-          clock_t clock_end;
-          clock_end = clock () + period;
+        case 's':
+        case '\n':
           fetch8051 (vm);
-          while (clock () < clock_end);
-          dump8051 (vm, minimal);
           operate8051 (vm);
-          if (PC == 0)
-            end = 1;
-        }
-      else
-        {
-          unsigned int address = -1;
-          unsigned int ncy = 0;
-          char opcode[6];
-          uint8_t next_IR[4];
-
-          if (command != 'i' && command != 'x')
-            dump8051 (vm, minimal);
-          printf (info);
-          printf ("\n> ");
-          info[0] = 0;
-          command = fgetc (stdin);
-
-          switch (command)
+          break;
+        case EOF:
+          printf ("\n");
+        case 'q':
+          end = 1;
+        case 'p':
+          break;
+        case 'r':
+          reset8051 (vm);
+          sprintf (info, "vm reset");
+          break;
+        case 'b':
+          scanf ("%x", &address);
+          if (!array_contains (256, breakpoints, address))
             {
-            case 's':
-            case '\n':
-              fetch8051 (vm);
-              operate8051 (vm);
-              break;
-            case EOF:
-              printf ("\n");
-            case 'q':
-              end = 1;
-            case 'p':
-              break;
-            case 'r':
-              reset8051 (vm);
-              sprintf (info, "vm reset");
-              break;
-            case 'b':
-              scanf ("%x", &address);
-              if (!array_contains (256, breakpoints, address))
-                {
-                  breakpoints[ind_stack[nbp++]] = address;
-                  sprintf (info, "new breakpoint: 0x%04X", address);
-                }
-              break;
-            case 'd':
-              scanf ("%x", &address);
-              i = array_remove (256, breakpoints, address);
-              if (i > 0)
-                {
-                  ind_stack[--nbp] = i;
-                  sprintf (info, "breakpoint removed: 0x%04X", address);
-                }
-              break;
-            case 'j':
-              scanf ("%x", &address);
-              PC = (uint16_t) address;
-              sprintf (info, "PC set to 0x%04X", address);
-              break;
-            case 'k':
-              fetch8051 (vm);
-              sprintf (info, "instruction skipped");
-              break;
-            case 'n':
-              address = PC + inst8051 (vm, next_IR, PC);
-              do
-                {
-                  fetch8051 (vm);
-                  operate8051 (vm);
-                }
-              while (PC != address && !array_contains (256, breakpoints, PC));
-              if (PC == address)
-                sprintf (info, "next line");
-              else
-                sprintf (info, "breakpoint reached: 0x%04X", PC);
-              break;
-            case 'g':
-              scanf ("%x", &address);
-            case 'c':
-              do
-                {
-                  fetch8051 (vm);
-                  operate8051 (vm);
-                }
-              while (PC != address && !array_contains (256, breakpoints, PC));
-              if (PC == address)
-                sprintf (info, "run to 0x%04X", address);
-              else
-                sprintf (info, "breakpoint reached: 0x%04X", PC);
-              break;
-            case 'w':
-              scanf ("%u", &ncy);
-              sprintf (info, "%u cycles ellapsed", ncy);
-              ncy += cycles;
-              do
-                {
-                  fetch8051 (vm);
-                  operate8051 (vm);
-                }
-              while (cycles < ncy && !array_contains (256, breakpoints, PC));
-              if (!cycles >= ncy)
-                sprintf (info, "breakpoint reached: 0x%04X", PC);
-              break;
-            case 'e':
-              scanf ("%s", opcode);
-              if (strlen (opcode) & 1 || strlen (opcode) > 6)
-                {
-                  sprintf (info, "invalid opcode: 0x%s", opcode);
-                  break;
-                }
-              IR[0] = (dhx (opcode[0]) << 4) | dhx (opcode[1]);
-              IR[1] = (dhx (opcode[2]) << 4) | dhx (opcode[3]);
-              IR[2] = (dhx (opcode[4]) << 4) | dhx (opcode[5]);
-              IR[3] = strlen (opcode) >> 1;
-              sprintf (info, "instruction injected: ");
-              sprint_op (info+22, IR, PC-IR[3]);
-              operate8051 (vm);
-              break;
-            case 'i':
-              dump8051_data (vm);
-              break;
-            case 'x':
-              scanf ("%u", &ncy);
-              dump8051_xdata (vm, ncy);
-              break;
-            default:
-              sprintf (info, "invalid command");
+              breakpoints[ind_stack[nbp++]] = address;
+              sprintf (info, "new breakpoint: 0x%04X", address);
             }
-          if (command != '\n' && command != EOF)
-            while (fgetc (stdin) != '\n');
-          if (end)
-            break;
+          break;
+        case 'd':
+          scanf ("%x", &address);
+          i = array_remove (256, breakpoints, address);
+          if (i > 0)
+            {
+              ind_stack[--nbp] = i;
+              sprintf (info, "breakpoint removed: 0x%04X", address);
+            }
+          break;
+        case 'j':
+          scanf ("%x", &address);
+          PC = (uint16_t) address;
+          sprintf (info, "PC set to 0x%04X", address);
+          break;
+        case 'k':
+          fetch8051 (vm);
+          sprintf (info, "instruction skipped");
+          break;
+        case 'n':
+          address = PC + inst8051 (vm, next_IR, PC);
+          do
+            {
+              fetch8051 (vm);
+              operate8051 (vm);
+            }
+          while (PC != address && !array_contains (256, breakpoints, PC));
+          if (PC == address)
+            sprintf (info, "next line");
+          else
+            sprintf (info, "breakpoint reached: 0x%04X", PC);
+          break;
+        case 'g':
+          scanf ("%x", &address);
+        case 'c':
+          do
+            {
+              fetch8051 (vm);
+              operate8051 (vm);
+            }
+          while (PC != address && !array_contains (256, breakpoints, PC));
+          if (PC == address)
+            sprintf (info, "run to 0x%04X", address);
+          else
+            sprintf (info, "breakpoint reached: 0x%04X", PC);
+          break;
+        case 'w':
+          scanf ("%u", &ncy);
+          sprintf (info, "%u cycles ellapsed", ncy);
+          ncy += cycles;
+          do
+            {
+              fetch8051 (vm);
+              operate8051 (vm);
+            }
+          while (cycles < ncy && !array_contains (256, breakpoints, PC));
+          if (!cycles >= ncy)
+            sprintf (info, "breakpoint reached: 0x%04X", PC);
+          break;
+        case 'e':
+          scanf ("%s", opcode);
+          if (strlen (opcode) & 1 || strlen (opcode) > 6)
+            {
+              sprintf (info, "invalid opcode: 0x%s", opcode);
+              break;
+            }
+          IR[0] = (dhx (opcode[0]) << 4) | dhx (opcode[1]);
+          IR[1] = (dhx (opcode[2]) << 4) | dhx (opcode[3]);
+          IR[2] = (dhx (opcode[4]) << 4) | dhx (opcode[5]);
+          IR[3] = strlen (opcode) >> 1;
+          sprintf (info, "instruction injected: ");
+          sprint_op (info+22, IR, PC-IR[3]);
+          operate8051 (vm);
+          break;
+        case 'i':
+          dump8051_data (vm);
+          break;
+        case 'f':
+          dump8051_sfr (vm);
+          break;
+        case 'x':
+          scanf ("%u", &ncy);
+          dump8051_xdata (vm, ncy);
+          break;
+        default:
+          sprintf (info, "invalid command");
         }
+      if (command != '\n' && command != EOF)
+        while (fgetc (stdin) != '\n');
+      if (end)
+        break;
     }
   dump8051 (vm, minimal);
 }
+
+void add_copro_RNG (struct vm8051 *vm);
+void free_coprocessors (struct vm8051 *vm);
 
 int main (int argc, char *argv[])
 {
@@ -490,22 +495,33 @@ int main (int argc, char *argv[])
           argv++;
         }
     }
-  if (argc < 3)
+  if (argc < 2)
     {
-      fprintf (stderr, "Usage: %s [-m] input clock\n", argv[0]);
+      fprintf (stderr, "Usage: %s [-m] input\n", argv[0]);
       return -1;
     }
   vm = malloc (sizeof (struct vm8051));
   assert (vm != NULL);
+  vm->coprocessors = NULL;
+
+#ifndef PURE_8051
+  add_copro_RNG (vm);
+#endif
 
   program = fopen (argv[1], "rb");
   if (program != NULL && read_bin (_code, program) > 0)
     {
       reset8051 (vm);
-      run8051 (vm, atoi (argv[2]), minimal);
+      run8051 (vm, minimal);
+      fclose (program);
     }
   else
     fprintf (stderr, "%s: empty program\n", argv[1]);
+
+#ifndef PURE_8051
+  free_coprocessors (vm);
+#endif
+
   free (vm);
   return 0;
 }

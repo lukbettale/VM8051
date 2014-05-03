@@ -23,10 +23,8 @@ Installation: `make && make install`
 `PREFIX="/my/own/path" make install`
               
 
-Usage: `vm8051 [-m] input clock`
+Usage: `vm8051 [-m] input`
 
-runs vm8051 on the code provided in `input`. If `clock` is set to 0,
-run in interactive mode, else, use `clock` as the time period between
-two instructions.
+runs vm8051 on the code provided in `input` in an interactive mode.
 
 `-m`     only show the minimal interface

@@ -18,22 +18,6 @@
 #ifndef LIB8051DEF_H
 #define LIB8051DEF_H
 
-#include <stdint.h>
-
-/* 8051 virtual machine */
-struct vm8051
-{
-  uint32_t cycles;
-  uint8_t _data[256];
-  uint8_t _sfr[128];
-  uint8_t _xdata[65536];
-  uint8_t _code[65536];
-  uint8_t IR[4];
-  uint16_t PC;
-  uint8_t interrupted;
-  uint8_t interrupts_blocked;
-};
-
 #define LOW  (1 << 0)
 #define HIGH (1 << 1)
 

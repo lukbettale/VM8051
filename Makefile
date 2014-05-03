@@ -18,12 +18,16 @@ VMHEADERS = $(wildcard vm/*.h)
 VMSRC = $(wildcard vm/*.c)
 VMOBJ = $(VMSRC:.c=.o)
 
+COPROSHEADERS = $(wildcard copros/*.h)
+COPROSSRC = $(wildcard copros/*.c)
+COPROSOBJ = $(COPROSSRC:.c=.o)
+
 UTILSHEADERS = $(wildcard utils/*.h)
 UTILSSRC = $(wildcard utils/*.c)
 UTILSOBJ = $(UTILSSRC:.c=.o)
 
-HEADERS = $(PRINTHEADERS) $(VMHEADERS) $(UTILSHEADERS)
-OBJFILES = $(PRINTOBJ) $(VMOBJ) $(UTILSOBJ)
+HEADERS = $(PRINTHEADERS) $(VMHEADERS) $(COPROSHEADERS) $(UTILSHEADERS)
+OBJFILES = $(PRINTOBJ) $(VMOBJ) $(COPROSOBJ) $(UTILSOBJ)
 
 all: $(TARGETS)
 
@@ -33,10 +37,10 @@ install: $(TARGETS)
 	cp $(HEADERS) $(PREFIX)/include
 	cp $(EXE) $(PREFIX)/bin
 
-lib8051.so: $(VMOBJ) $(PRINTOBJ) $(UTILSOBJ)
+lib8051.so: $(VMOBJ) $(COPROSOBJ) $(PRINTOBJ) $(UTILSOBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -o $@ $+
 
-lib8051.a: $(VMOBJ) $(PRINTOBJ) $(UTILSOBJ)
+lib8051.a: $(VMOBJ) $(COPROSOBJ) $(PRINTOBJ) $(UTILSOBJ)
 	ar cr $@ $+
 	ranlib $@
 

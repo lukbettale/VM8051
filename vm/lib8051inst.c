@@ -82,6 +82,9 @@ static uint8_t get_direct (struct vm8051 *vm, uint8_t direct)
   return ((direct & 0x80) ? _sfr[direct ^ 0x80] : _data[direct]);
 }
 
+#ifndef PURE_8051
+#define is_valid_direct(direct) 1
+#else
 static int is_valid_direct (uint8_t direct)
 {
   if (direct & 0x80)            /* SFR memory area */
@@ -114,7 +117,7 @@ static int is_valid_direct (uint8_t direct)
         case 0xD0:              /* PSW */
         case 0xE0:              /* ACC */
         case 0xF0:              /* B */
-          return 1;
+          break;
 
         default:
           return 0;
@@ -122,7 +125,11 @@ static int is_valid_direct (uint8_t direct)
     }
   return 1;
 }
+#endif
 
+#ifndef PURE_8051
+#define is_valid_bit(bit) 1
+#else
 static int is_valid_bit (uint8_t bit)
 {
   if (bit & 0x80)               /* SFR memory area */
@@ -140,14 +147,16 @@ static int is_valid_bit (uint8_t bit)
         case 0xD0:              /* PSW */
         case 0xE0:              /* ACC */
         case 0xF0:              /* B */
-          return 1;
+          break;
 
         case 0xA8:              /* IE */
-          if ((bit & 0x07) == 7)
-            return 1;
+          if ((bit & 0x07) == 6 || (bit & 0x07) == 5)
+            return 0;
+          break;
         case 0xB8:              /* IP */
-          if ((bit & 0x07) < 5)
-            return 1;
+          if ((bit & 0x07) > 4)
+            return 0;
+          break;
 
         default:
           return 0;
@@ -155,6 +164,7 @@ static int is_valid_bit (uint8_t bit)
     }
   return 1;
 }
+#endif
 
 /* add A, Rn              1       1 */
 void inst_add_Rn (struct vm8051 *vm, unsigned char n)

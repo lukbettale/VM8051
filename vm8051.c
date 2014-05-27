@@ -351,7 +351,7 @@ static void run8051 (struct vm8051 *vm, int minimal)
       char opcode[6];
       uint8_t next_IR[4];
 
-      if (command != 'i' && command != 'x')
+      if (command != 'i' && command != 'x' && command != 'f')
         dump8051 (vm, minimal);
       printf (info);
       printf ("\n> ");

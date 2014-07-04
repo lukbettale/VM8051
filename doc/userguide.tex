@@ -1,0 +1,49 @@
+\documentclass{article}
+\title{VM8051 User Guide}
+\author{Luk Bettale}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction}
+VM8051 is a virtual machine that simulates a 8051 CPU. The software is
+composed of a library \texttt{lib8051}, and an interactive program
+that allows to execute a 8051 program step by step.
+
+\section*{Using \texttt{vm8051}}
+VM8051 can be launched by command line. The binary input file has to
+be specified as first argument. The \texttt{-m} option instructs the
+VM to show only minimal information about the state (only registers
+and CPU related SFRs).
+
+\begin{verbatim}
+vm8051 [-m] input
+\end{verbatim}
+
+\section*{Main commands}
+The following commands are available:
+
+\begin{tabular}{ll}
+  \texttt{s}&\textbf{S}tep instruction (step into call/jump)\\
+  \texttt{q}&\textbf{Q}uit\\
+  \texttt{p}&\textbf{P}rint state (do nothing)\\
+  \texttt{r}&\textbf{R}eset virtual machine\\
+  \texttt{b} \textit{address}&\textbf{B}reakpoint at \textit{address}\\
+  \texttt{d} \textit{address}&\textbf{D}elete breakpoint at \textit{address}\\
+  \texttt{j} \textit{address}&\textbf{J}ump to \textit{address}\\
+  \texttt{k}&\textbf{K}ill (skip) next instruction\\
+  \texttt{n}&\textbf{N}ext instruction in the code (skip call/jump)\\
+  \texttt{g} \textit{address}&\textbf{G}o to \textit{address} (run
+  code), stop at breakpoints\\
+  \texttt{c}&\textbf{C}ontinue (run code), stop at breakpoints\\
+  \texttt{w} \textit{ncy}&\textbf{W}ait \textit{ncy} cycles (run code),
+  stop at breakpoints\\
+  \texttt{e} \textit{opcode}&\textbf{E}xecute instruction (\textit{opcode})\\
+  \texttt{i}&\textbf{I}data dump\\
+  \texttt{f}&S\textbf{F}R dump\\
+  \texttt{x} \textit{n}&\textbf{X}data dump (\textit{n}-th page)
+\end{tabular}
+
+\end{document}

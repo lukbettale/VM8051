@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include <vm/lib8051.h>
 #include <vm/lib8051coprocessors.h>
@@ -55,6 +56,8 @@ static void operate_RNG (struct vm8051 *vm, void *copro)
 void add_copro_RNG (struct vm8051 *vm)
 {
   struct copro_RNG *rng;
+
+  srand (time (NULL));
 
   rng = malloc (sizeof (struct copro_RNG));
   rng->cycles_start = 0;

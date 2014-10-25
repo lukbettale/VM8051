@@ -509,7 +509,7 @@ int main (int argc, char *argv[])
 #endif
 
   program = fopen (argv[1], "rb");
-  if (program != NULL && read_bin (_code, program) > 0)
+  if (program != NULL && read_hex (_code, program) > 0)
     {
       reset8051 (vm);
       run8051 (vm, minimal);

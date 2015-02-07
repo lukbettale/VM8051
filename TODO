@@ -9,6 +9,5 @@ Library:
 
 Virtual Machine:
 * Generic option management
-* Support hex input file
 * User-friendly bit toggle
 

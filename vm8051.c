@@ -438,7 +438,7 @@ static void run8051 (struct vm8051 *vm, int minimal)
               operate8051 (vm);
             }
           while (cycles < ncy && !array_contains (256, breakpoints, PC));
-          if ((!cycles) >= ncy)
+          if (cycles < ncy)
             sprintf (info, "breakpoint reached: 0x%04X", PC);
           break;
         case 'e':

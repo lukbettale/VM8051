@@ -353,8 +353,7 @@ static void run8051 (struct vm8051 *vm, int minimal)
 
       if (command != 'i' && command != 'x' && command != 'f')
         dump8051 (vm, minimal);
-      printf (info);
-      printf ("\n> ");
+      printf ("%s\n> ", info);
       info[0] = 0;
       command = fgetc (stdin);
 

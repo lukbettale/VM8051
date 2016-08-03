@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 Luk Bettale
+/* Copyright (C) 2014, 2016 Luk Bettale
 
    This file is part of VM8051.
 
@@ -53,7 +53,7 @@ void add_coprocessor (struct vm8051 *vm, void *contents, unsigned int index)
 }
 
 /* this table will store all available operate functions */
-void (*operate_table[8]) (struct vm8051 *, void *);
+void (*operate_copro_table[8]) (struct vm8051 *, void *);
 
 /* call the operate function of all available coprocessors */
 void operate_coprocessors (struct vm8051 *vm)
@@ -63,8 +63,25 @@ void operate_coprocessors (struct vm8051 *vm)
   copros = vm->coprocessors;
   while (copros)
     {
-      assert (operate_table[copros->index] != NULL);
-      operate_table[copros->index] (vm, copros->contents);
+      assert (operate_copro_table[copros->index] != NULL);
+      operate_copro_table[copros->index] (vm, copros->contents);
+      copros = copros->next;
+    }
+}
+
+/* this table will store all available print functions */
+void (*print_copro_table[8]) (struct vm8051 *, void *);
+
+/* call the operate function of all available coprocessors */
+void print_coprocessors (struct vm8051 *vm)
+{
+  struct copro8051 *copros;
+
+  copros = vm->coprocessors;
+  while (copros)
+    {
+      assert (print_copro_table[copros->index] != NULL);
+      print_copro_table[copros->index] (vm, copros->contents);
       copros = copros->next;
     }
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 Luk Bettale
+/* Copyright (C) 2014, 2016 Luk Bettale
 
    This file is part of VM8051.
 
@@ -23,9 +23,13 @@
 
 #include "lib8051.h"
 
+extern void (*operate_copro_table[8]) (struct vm8051 *vm, void *copro);
+extern void (*print_copro_table[8]) (struct vm8051 *vm, void *copro);
+
 extern void add_coprocessor (struct vm8051 *vm,
                              void *contents, unsigned int index);
 extern void operate_coprocessors (struct vm8051 *vm);
+extern void print_coprocessors (struct vm8051 *vm);
 extern void free_coprocessors (struct vm8051 *vm);
 
 #endif  /* LIB8051COPROCESSORS_H */

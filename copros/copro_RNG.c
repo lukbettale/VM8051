@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 Luk Bettale
+/* Copyright (C) 2014, 2016 Luk Bettale
 
    This file is part of VM8051.
 
@@ -26,9 +26,10 @@
 
 #define RNG_INDEX 0
 
-#define RNG_CTRL _sfr[0xC0 ^ 0x80]
-#define RNG_RND  _sfr[0xC1 ^ 0x80]
+#define RNG_CTRL vm->_sfr[0xC0 ^ 0x80]
+#define RNG_RND  vm->_sfr[0xC1 ^ 0x80]
 
+#define RNG_CTRL_RUN_MASK  0x01
 #define RNG_DURATION 10
 
 struct copro_RNG
@@ -36,21 +37,46 @@ struct copro_RNG
   uint32_t cycles_start;
 };
 
-extern void (*operate_table[8]) (struct vm8051 *, void *);
-
-static void operate_RNG (struct vm8051 *vm, void *copro)
+void print_copro_RNG (struct vm8051 *vm, void *copro)
 {
   struct copro_RNG *rng = copro;
 
-  if (vm->RNG_CTRL & 0x01 && !rng->cycles_start)
+  printf ("copro RNG:              \tstatus: ");
+  if (!rng->cycles_start)
+    printf ("available (0x%02X)\n", RNG_RND);
+  else
+    printf ("generating (%u cy left)\n",
+            RNG_DURATION - (vm->cycles - rng->cycles_start));
+  printf ("\n");
+
+}
+
+void operate_copro_RNG (struct vm8051 *vm, void *copro)
+{
+  struct copro_RNG *rng = copro;
+
+  /* no software clear of RUN bit */
+  if (rng->cycles_start)
+    RNG_CTRL |= RNG_CTRL_RUN_MASK;
+
+  /* launch operation */
+  if ((RNG_CTRL & RNG_CTRL_RUN_MASK) && !rng->cycles_start)
     rng->cycles_start = vm->cycles;
 
-  if (vm->RNG_CTRL & 0x01 && vm->cycles - rng->cycles_start >= RNG_DURATION)
+  /* currently running */
+  if (rng->cycles_start)
     {
-      rng->cycles_start = 0;
-      vm->RNG_CTRL &= ~0x01;
-      vm->RNG_RND = (uint8_t) rand ();
+      /* random generated */
+      if (vm->cycles - rng->cycles_start >= RNG_DURATION)
+        {
+          RNG_RND = (uint8_t) rand ();
+          rng->cycles_start = 0;
+        }
     }
+
+  /* always clear RUN bit if not running */
+  if (!rng->cycles_start)
+    RNG_CTRL &= ~RNG_CTRL_RUN_MASK;
 }
 
 void add_copro_RNG (struct vm8051 *vm)
@@ -62,6 +88,7 @@ void add_copro_RNG (struct vm8051 *vm)
   rng = malloc (sizeof (struct copro_RNG));
   rng->cycles_start = 0;
 
-  operate_table[RNG_INDEX] = &operate_RNG;
+  operate_copro_table[RNG_INDEX] = &operate_copro_RNG;
+  print_copro_table[RNG_INDEX] = &print_copro_RNG;
   add_coprocessor (vm, rng, RNG_INDEX);
 }

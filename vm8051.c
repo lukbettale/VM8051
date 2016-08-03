@@ -1,4 +1,4 @@
-/* Copyright (C) 2014, 2015 Luk Bettale
+/* Copyright (C) 2014, 2015, 2016 Luk Bettale
 
    This file is part of VM8051.
 
@@ -67,9 +67,18 @@ static void dump8051_sfr (struct vm8051 *vm)
 
 static void dump8051_xdata (struct vm8051 *vm, unsigned int page)
 {
-  printf ("XDATA:\n");
+  if (page >= 128)
+    {
+      printf ("XDATA page out of bounds\n");
+      return;
+    }
+
+  printf ("XDATA page (0x%04X - 0x%04X):\n",
+          512 * page, 512 * (page + 1) - 1);
   for (unsigned int i = 512 * page; i < 512 * (page + 1); i++)
     {
+      if ((i & 0x0F) == 0x00)
+        printf ("0x%04X: ", i);
       printf ("%02X ", _xdata[i]);
       if ((i & 0x0F) == 0x0F)
         printf ("\n");
@@ -301,6 +310,9 @@ static void dump8051 (struct vm8051 *vm, int minimal)
         }
       printf ("\n");
     }
+#ifndef PURE_8051
+  print_coprocessors (vm);
+#endif
 }
 
 static int array_contains (int len, unsigned int *array, unsigned int elt)
@@ -475,9 +487,6 @@ static void run8051 (struct vm8051 *vm, int minimal)
     }
   dump8051 (vm, minimal);
 }
-
-void add_copro_RNG (struct vm8051 *vm);
-void free_coprocessors (struct vm8051 *vm);
 
 int main (int argc, char *argv[])
 {

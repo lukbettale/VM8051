@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 Luk Bettale
+/* Copyright (C) 2014, 2016 Luk Bettale
 
    This file is part of VM8051.
 
@@ -64,6 +64,8 @@ static void SFR_check (struct vm8051 *vm, uint8_t direct)
     }
   if (direct == 0x87)           /* PCON */
     PCON &= 0x8F;
+  if (direct == 0x99)           /* SBUF */
+    SCON |= TI_MASK;
 }
 
 static void assign_direct (struct vm8051 *vm, uint8_t direct, uint8_t val)

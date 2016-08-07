@@ -31,6 +31,12 @@
 /* simulate global variables for a struct vm8051 *vm */
 #include <vm/lib8051globals.h>
 
+unsigned int inbuf_idx = 0;
+unsigned int inbuf_len = 0;
+char inbuf[1024];
+unsigned int outbuf_len = 0;
+char outbuf[1024];
+
 /* convert hexadecimal char to int */
 static int dhx (char c)
 {
@@ -48,6 +54,8 @@ static void dump8051_data (struct vm8051 *vm)
   printf ("\nIDATA:\n");
   for (int i = 0; i < 256; i++)
     {
+      if ((i & 0x0F) == 0x00)
+        printf ("  0x%02X: ", i);
       printf ("%02X ", _data[i]);
       if ((i & 0x0F) == 0x0F)
         printf ("\n");
@@ -59,6 +67,8 @@ static void dump8051_sfr (struct vm8051 *vm)
   printf ("\nSFR:\n");
   for (int i = 0; i < 128; i++)
     {
+      if ((i & 0x0F) == 0x00)
+        printf ("  0x%02X: ", 0x80 + i);
       printf ("%02X ", _sfr[i]);
       if ((i & 0x0F) == 0x0F)
         printf ("\n");
@@ -67,13 +77,7 @@ static void dump8051_sfr (struct vm8051 *vm)
 
 static void dump8051_xdata (struct vm8051 *vm, unsigned int page)
 {
-  if (page >= 128)
-    {
-      printf ("XDATA page out of bounds\n");
-      return;
-    }
-
-  printf ("XDATA page (0x%04X - 0x%04X):\n",
+  printf ("XDATA page %d (0x%04X - 0x%04X):\n", page,
           512 * page, 512 * (page + 1) - 1);
   for (unsigned int i = 512 * page; i < 512 * (page + 1); i++)
     {
@@ -313,12 +317,18 @@ static void dump8051 (struct vm8051 *vm, int minimal)
 #ifndef PURE_8051
   print_coprocessors (vm);
 #endif
+  printf ("----------------------------------------"
+          "----------------------------------------\n");
+  for (unsigned int i = 0; i < outbuf_len; i++)
+    printf ("%c", outbuf[i]);
+  printf ("\n");
+  printf ("----------------------------------------"
+          "----------------------------------------\n");
 }
 
 static int array_contains (int len, unsigned int *array, unsigned int elt)
 {
-  int i;
-  for (i = 0; i < len; i++)
+  for (int i = 0; i < len; i++)
     {
       if (array[i] == elt)
         return 1;
@@ -328,8 +338,7 @@ static int array_contains (int len, unsigned int *array, unsigned int elt)
 
 static int array_remove (int len, unsigned int *array, unsigned int elt)
 {
-  int i;
-  for (i = 0; i < len; i++)
+  for (int i = 0; i < len; i++)
     {
       if (array[i] == elt)
         {
@@ -338,6 +347,30 @@ static int array_remove (int len, unsigned int *array, unsigned int elt)
         }
     }
   return -1;
+}
+
+static void wrap_operate8051 (struct vm8051 *vm)
+{
+  int prev_TI;
+
+  if (REN && !RI && inbuf_idx < inbuf_len)
+    {
+      SBUF = inbuf[inbuf_idx++];
+      SCON |= RI_MASK;
+      if (inbuf_idx == inbuf_len)
+        {
+          printf ("reset here\n");
+          inbuf_idx = 0;
+          inbuf_len = 0;
+          inbuf[0] = 0;
+        }
+    }
+
+  prev_TI = TI;
+  operate8051 (vm);
+
+  if (prev_TI == 0 && TI == 1)
+    outbuf[outbuf_len++] = SBUF;
 }
 
 static void run8051 (struct vm8051 *vm, int minimal)
@@ -358,36 +391,83 @@ static void run8051 (struct vm8051 *vm, int minimal)
 
   while (!end)
     {
+      int ret = -1;
+      int value = -1;
       unsigned int address = -1;
       unsigned int ncy = 0;
       char opcode[6];
       uint8_t next_IR[4];
 
       if (command != 'i' && command != 'x' && command != 'f')
-        dump8051 (vm, minimal);
+        {
+          dump8051 (vm, minimal);
+        }
       printf ("%s\n> ", info);
       info[0] = 0;
-      command = fgetc (stdin);
 
+      command = fgetc (stdin);
+      /*  bcdefg ijk  n pqrs   wx  \n!? */
+      /* abcdefghijklmnopqrstuvwxyz\n!?.:;/\ */
       switch (command)
         {
         case 's':
         case '\n':
+          /* step instruction */
           fetch8051 (vm);
-          operate8051 (vm);
+          wrap_operate8051 (vm);
           break;
         case EOF:
           printf ("\n");
         case 'q':
+          /* quit */
           end = 1;
         case 'p':
+          /* do nothing (re-print only) */
+          break;
+        case '?':
+          /* send data (serial port) */
+          scanf ("%1024[^\n]", inbuf + inbuf_len);
+          inbuf_len += strlen (inbuf + inbuf_len);
+          sprintf (info, "string bufferized");
+          break;
+        case '!':
+          /* flush received data */
+          outbuf_len = 0;
+          sprintf (info, "received data cleared");
+          break;
+        case 'P':
+          /* change value of port a port P */
+          ret = scanf ("%u %i", &address, &value);
+          if (ret != 2)
+            {
+              sprintf (info, "%c: invalid arguments", command);
+              break;
+            }
+          if (address >= 4)
+            {
+              sprintf (info, "%c: invalid port number %u", command, address);
+              break;
+            }
+          sprintf (info, "Port P%d affected to 0x%02X",
+                   address, value & 0xFF);
+          _sfr[address << 4] = value;
           break;
         case 'r':
+          /* reset VM */
+          inbuf_idx = 0;
+          inbuf_len = 0;
+          outbuf_len = 0;
           reset8051 (vm);
           sprintf (info, "vm reset");
           break;
         case 'b':
-          scanf ("%x", &address);
+          /* add breakpoint */
+          ret = scanf ("%x", &address);
+          if (ret != 1)
+            {
+              sprintf (info, "%c: hexadecimal address required", command);
+              break;
+            }
           if (!array_contains (256, breakpoints, address))
             {
               breakpoints[ind_stack[nbp++]] = address;
@@ -395,7 +475,13 @@ static void run8051 (struct vm8051 *vm, int minimal)
             }
           break;
         case 'd':
-          scanf ("%x", &address);
+          /* delete breakpoint */
+          ret = scanf ("%x", &address);
+          if (ret != 1)
+            {
+              sprintf (info, "%c: hexadecimal address required", command);
+              break;
+            }
           i = array_remove (256, breakpoints, address);
           if (i > 0)
             {
@@ -404,20 +490,28 @@ static void run8051 (struct vm8051 *vm, int minimal)
             }
           break;
         case 'j':
-          scanf ("%x", &address);
+          /* jump to address (goto) */
+          ret = scanf ("%x", &address);
+          if (ret != 1)
+            {
+              sprintf (info, "%c: hexadecimal address required", command);
+              break;
+            }
           PC = (uint16_t) address;
           sprintf (info, "PC set to 0x%04X", address);
           break;
         case 'k':
+          /* skip instruction */
           fetch8051 (vm);
           sprintf (info, "instruction skipped");
           break;
         case 'n':
+          /* run to next line (do not step into function) */
           address = PC + inst8051 (vm, next_IR, PC);
           do
             {
               fetch8051 (vm);
-              operate8051 (vm);
+              wrap_operate8051 (vm);
             }
           while (PC != address && !array_contains (256, breakpoints, PC));
           if (PC == address)
@@ -426,12 +520,19 @@ static void run8051 (struct vm8051 *vm, int minimal)
             sprintf (info, "breakpoint reached: 0x%04X", PC);
           break;
         case 'g':
-          scanf ("%x", &address);
+          /* run until address is reached */
+          ret = scanf ("%x", &address);
+          if (ret != 1)
+            {
+              sprintf (info, "%c: hexadecimal address required", command);
+              break;
+            }
         case 'c':
+          /* continue execution */
           do
             {
               fetch8051 (vm);
-              operate8051 (vm);
+              wrap_operate8051 (vm);
             }
           while (PC != address && !array_contains (256, breakpoints, PC));
           if (PC == address)
@@ -440,23 +541,31 @@ static void run8051 (struct vm8051 *vm, int minimal)
             sprintf (info, "breakpoint reached: 0x%04X", PC);
           break;
         case 'w':
-          scanf ("%u", &ncy);
+          /* wait the given amount of cycles */
+          ret = scanf ("%u", &ncy);
+          if (ret != 1)
+            {
+              sprintf (info, "%c: unsigned decimal value required", command);
+              break;
+            }
           sprintf (info, "%u cycles ellapsed", ncy);
           ncy += cycles;
           do
             {
               fetch8051 (vm);
-              operate8051 (vm);
+              wrap_operate8051 (vm);
             }
           while (cycles < ncy && !array_contains (256, breakpoints, PC));
           if (cycles < ncy)
             sprintf (info, "breakpoint reached: 0x%04X", PC);
           break;
         case 'e':
+          /* inject an opcode */
           scanf ("%s", opcode);
-          if (strlen (opcode) & 1 || strlen (opcode) > 6)
+          ret = sscanf (opcode, "%6[0-9a-fA-F]", opcode);
+          if (ret != 1 || strlen (opcode) & 1)
             {
-              sprintf (info, "invalid opcode: 0x%s", opcode);
+              sprintf (info, "%c: valid opcode required", command);
               break;
             }
           IR[0] = (dhx (opcode[0]) << 4) | dhx (opcode[1]);
@@ -464,17 +573,32 @@ static void run8051 (struct vm8051 *vm, int minimal)
           IR[2] = (dhx (opcode[4]) << 4) | dhx (opcode[5]);
           IR[3] = strlen (opcode) >> 1;
           sprintf (info, "instruction injected: ");
-          sprint_op (info+22, IR, PC-IR[3]);
-          operate8051 (vm);
+          sprint_op (info + strlen (info), IR, PC-IR[3]);
+          wrap_operate8051 (vm);
           break;
         case 'i':
+          /* print contents of idata */
           dump8051_data (vm);
           break;
         case 'f':
+          /* print contents of SFRs */
           dump8051_sfr (vm);
           break;
         case 'x':
-          scanf ("%u", &ncy);
+          /* print contents of xdata (specified page) */
+          ret = scanf ("%u", &ncy);
+          if (ret != 1)
+            {
+              sprintf (info, "%c: unsigned decimal value required", command);
+              command = 'p';    /* force state printing next */
+              break;
+            }
+          if (ncy >= 128)
+            {
+              sprintf (info, "%c: page out of bounds", command);
+              command = 'p';    /* force state printing next */
+              break;
+            }
           dump8051_xdata (vm, ncy);
           break;
         default:

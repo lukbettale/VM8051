@@ -37,6 +37,11 @@ install: $(TARGETS)
 	cp $(HEADERS) $(PREFIX)/include
 	cp $(EXE) $(PREFIX)/bin
 
+uninstall:
+	rm -f $(foreach LIB, $(LIBS), $(PREFIX)/lib/$(LIB))
+	rm -f $(foreach HEADER, $(HEADERS), $(PREFIX)/include/$(HEADER))
+	rm -f $(foreach E, $(EXE), $(PREFIX)/bin/$(E))
+
 lib8051.so: $(VMOBJ) $(COPROSOBJ) $(PRINTOBJ) $(UTILSOBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -o $@ $+
 
@@ -49,4 +54,4 @@ vm8051: lib8051.a
 clean:
 	rm -f $(OBJFILES) $(TARGETS)
 
-.PHONY: all clean
+.PHONY: all clean install uninstall

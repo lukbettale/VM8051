@@ -424,34 +424,6 @@ static void run8051 (struct vm8051 *vm, int minimal)
         case 'p':
           /* do nothing (re-print only) */
           break;
-        case '?':
-          /* send data (serial port) */
-          scanf ("%1024[^\n]", inbuf + inbuf_len);
-          inbuf_len += strlen (inbuf + inbuf_len);
-          sprintf (info, "string bufferized");
-          break;
-        case '!':
-          /* flush received data */
-          outbuf_len = 0;
-          sprintf (info, "received data cleared");
-          break;
-        case 'P':
-          /* change value of port a port P */
-          ret = scanf ("%u %i", &address, &value);
-          if (ret != 2)
-            {
-              sprintf (info, "%c: invalid arguments", command);
-              break;
-            }
-          if (address >= 4)
-            {
-              sprintf (info, "%c: invalid port number %u", command, address);
-              break;
-            }
-          sprintf (info, "Port P%d affected to 0x%02X",
-                   address, value & 0xFF);
-          _sfr[address << 4] = value;
-          break;
         case 'r':
           /* reset VM */
           inbuf_idx = 0;
@@ -575,6 +547,34 @@ static void run8051 (struct vm8051 *vm, int minimal)
           sprintf (info, "instruction injected: ");
           sprint_op (info + strlen (info), IR, PC-IR[3]);
           wrap_operate8051 (vm);
+          break;
+        case '?':
+          /* send data (serial port) */
+          scanf ("%1024[^\n]", inbuf + inbuf_len);
+          inbuf_len += strlen (inbuf + inbuf_len);
+          sprintf (info, "string bufferized");
+          break;
+        case '!':
+          /* flush received data */
+          outbuf_len = 0;
+          sprintf (info, "received data cleared");
+          break;
+        case 'P':
+          /* change value of port a port P */
+          ret = scanf ("%u %i", &address, &value);
+          if (ret != 2)
+            {
+              sprintf (info, "%c: invalid arguments", command);
+              break;
+            }
+          if (address >= 4)
+            {
+              sprintf (info, "%c: invalid port number %u", command, address);
+              break;
+            }
+          sprintf (info, "Port P%d affected to 0x%02X",
+                   address, value & 0xFF);
+          _sfr[address << 4] = value;
           break;
         case 'i':
           /* print contents of idata */

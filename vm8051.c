@@ -406,7 +406,7 @@ static void run8051 (struct vm8051 *vm, int minimal)
       info[0] = 0;
 
       command = fgetc (stdin);
-      /*  bcdefg ijk  n pqrs   wx  \n!? */
+      /*  bcdefg ijk  n pqrs   wx z\n!?      */
       /* abcdefghijklmnopqrstuvwxyz\n!?.:;/\ */
       switch (command)
         {
@@ -431,6 +431,10 @@ static void run8051 (struct vm8051 *vm, int minimal)
           outbuf_len = 0;
           reset8051 (vm);
           sprintf (info, "vm reset");
+          break;
+        case 'z':
+          /* reset states to zero */
+          cycles = 0;
           break;
         case 'b':
           /* add breakpoint */

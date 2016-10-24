@@ -564,7 +564,7 @@ static void run8051 (struct vm8051 *vm, int minimal)
           sprintf (info, "received data cleared");
           break;
         case 'P':
-          /* change value of port a port P */
+          /* change value of port P */
           ret = scanf ("%u %i", &address, &value);
           if (ret != 2)
             {
@@ -576,9 +576,9 @@ static void run8051 (struct vm8051 *vm, int minimal)
               sprintf (info, "%c: invalid port number %u", command, address);
               break;
             }
-          sprintf (info, "Port P%d affected to 0x%02X",
-                   address, value & 0xFF);
           _sfr[address << 4] = value;
+          sprintf (info, "Port P%d affected to 0x%02X",
+                   address, _sfr[address << 4]);
           break;
         case 'i':
           /* print contents of idata */

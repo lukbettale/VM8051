@@ -406,8 +406,6 @@ static void run8051 (struct vm8051 *vm, int minimal)
       info[0] = 0;
 
       command = fgetc (stdin);
-      /*  bcdefg ijk  n pqrs   wx z\n!?      */
-      /* abcdefghijklmnopqrstuvwxyz\n!?.:;/\ */
       switch (command)
         {
         case 's':

@@ -391,6 +391,7 @@ static void run8051 (struct vm8051 *vm, int minimal)
 
   while (!end)
     {
+      char c;
       int ret = -1;
       int value = -1;
       unsigned int address = -1;
@@ -595,6 +596,55 @@ static void run8051 (struct vm8051 *vm, int minimal)
           regs[address] = value;
           sprintf (info, "Register R%d affected to 0x%02X",
                    address, regs[address]);
+          break;
+        case '=':
+          /* change a value anywhere in memory */
+          ret = scanf ("%c %x %i", &c, &address, &value);
+          if (ret != 3)
+            {
+              sprintf (info, "%c: invalid arguments", command);
+              break;
+            }
+          if (c != 'i' && c != 'f' && c != 'x')
+            {
+              sprintf (info, "%c: invalid memory area %c", command, c);
+              break;
+            }
+          if (c == 'i' && (address >= 256))
+            {
+              sprintf (info, "%c: invalid address in idata 0x%02X",
+                       command, address);
+              break;
+            }
+          if (c == 'f' && (address < 128 || address >= 256))
+            {
+              sprintf (info, "%c: invalid SFR 0x%02X", command, address);
+              break;
+            }
+          if (c == 'x' && (address >= 65536))
+            {
+              sprintf (info, "%c: invalid address in xdata 0x%04X",
+                       command, address);
+              break;
+            }
+          if (c == 'i')
+            {
+              _data[address] = value;
+              sprintf (info, "value at idata address 0x%02X set to 0x%02X",
+                       address, _data[address]);
+            }
+          if (c == 'f')
+            {
+              _sfr[address ^ 0x80] = value;
+              sprintf (info, "value at idata address 0x%02X set to 0x%02X",
+                       address, _sfr[address ^ 0x80]);
+            }
+          if (c == 'x')
+            {
+              _xdata[address] = value;
+              sprintf (info, "value at xdata address 0x%04X set to 0x%02X",
+                       address, _xdata[address]);
+            }
           break;
         case 'i':
           /* print contents of idata */

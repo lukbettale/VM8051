@@ -578,6 +578,24 @@ static void run8051 (struct vm8051 *vm, int minimal)
           sprintf (info, "Port P%d affected to 0x%02X",
                    address, _sfr[address << 4]);
           break;
+        case 'R':
+          /* change value of register R */
+          ret = scanf ("%u %i", &address, &value);
+          if (ret != 2)
+            {
+              sprintf (info, "%c: invalid arguments", command);
+              break;
+            }
+          if (address >= 8)
+            {
+              sprintf (info, "%c: invalid register number %u",
+                       command, address);
+              break;
+            }
+          regs[address] = value;
+          sprintf (info, "Register R%d affected to 0x%02X",
+                   address, regs[address]);
+          break;
         case 'i':
           /* print contents of idata */
           dump8051_data (vm);

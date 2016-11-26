@@ -646,6 +646,66 @@ static void run8051 (struct vm8051 *vm, int minimal)
                        address, _xdata[address]);
             }
           break;
+        case 'B':
+          /* flip a Bit anywhere in memory */
+          ret = scanf ("%c %x %i", &c, &address, &value);
+          if (ret != 3)
+            {
+              sprintf (info, "%c: invalid arguments", command);
+              break;
+            }
+          if (c != 'i' && c != 'f' && c != 'x')
+            {
+              sprintf (info, "%c: invalid memory area %c", command, c);
+              break;
+            }
+          if (c == 'i' && (address >= 256))
+            {
+              sprintf (info, "%c: invalid address in idata 0x%02X",
+                       command, address);
+              break;
+            }
+          if (c == 'f' && (address < 128 || address >= 256))
+            {
+              sprintf (info, "%c: invalid SFR 0x%02X", command, address);
+              break;
+            }
+          if (c == 'x' && (address >= 65536))
+            {
+              sprintf (info, "%c: invalid address in xdata 0x%04X",
+                       command, address);
+              break;
+            }
+          if (value < 0 || value >= 8)
+            {
+              sprintf (info, "%c: invalid bit position %d", command, value);
+              break;
+            }
+          if (c == 'i')
+            {
+              sprintf (info, "Bit %d at idata address 0x%02X flipped "
+                       "0x%02X => 0x%02X", value, address,
+                       _data[address],
+                       _data[address] ^ (1 << value));
+              _data[address] ^= (1 << value);
+            }
+          if (c == 'f')
+            {
+              sprintf (info, "Bit %d at SFR 0x%02X flipped "
+                       "0x%02X => 0x%02X", value, address,
+                       _sfr[address ^ 0x80],
+                       _sfr[address ^ 0x80] ^ (1 << value));
+              _sfr[address ^ 0x80] ^= (1 << value);
+            }
+          if (c == 'x')
+            {
+              sprintf (info, "Bit %d at xdata address 0x%02X flipped "
+                       "0x%02X => 0x%02X", value, address,
+                       _xdata[address],
+                       _xdata[address] ^ (1 << value));
+              _xdata[address] ^= (1 << value);
+            }
+          break;
         case 'i':
           /* print contents of idata */
           dump8051_data (vm);

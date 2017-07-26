@@ -1,4 +1,4 @@
-/* Copyright (C) 2014, 2015, 2016 Luk Bettale
+/* Copyright (C) 2014, 2015, 2016, 2017 Luk Bettale
 
    This file is part of VM8051.
 
@@ -36,6 +36,7 @@ unsigned int inbuf_len = 0;
 char inbuf[1024];
 unsigned int outbuf_len = 0;
 char outbuf[1024];
+int hex_mode = 0;
 
 /* convert hexadecimal char to int */
 static int dhx (char c)
@@ -46,7 +47,52 @@ static int dhx (char c)
     return 10 + (c - 'a');
   if ('A' <= c && c <= 'F')
     return 10 + (c - 'A');
-  return -1;
+  return 0;
+}
+
+/* convert int to hexadecimal char */
+static char hxd (int i)
+{
+  if (0 <= i && i <= 9)
+    return '0' + i;
+  if (10 <= i && i <= 15)
+    return 'A' + (i - 10);
+  return 'G';
+}
+
+static void read_inbuf (char *buffer)
+{
+  unsigned int i;
+  if (!hex_mode)
+    {
+      for (i = 0; i < strlen (buffer); i++)
+        inbuf[i] = buffer[i];
+    }
+  else
+    {
+      for (i = 0; i < (strlen (buffer) >> 1); i++)
+        inbuf[i] = (dhx (buffer[i << 1]) << 4) | dhx (buffer[(i << 1) + 1]);
+    }
+  inbuf_len += i;
+}
+
+static void write_outbuf (char *buffer)
+{
+  unsigned int i;
+  if (!hex_mode)
+    {
+      for (i = 0; i < outbuf_len; i++)
+        buffer[i] = outbuf[i];
+    }
+  else
+    {
+      for (i = 0; i < outbuf_len << 1; i += 2)
+        {
+          buffer[i] = hxd ((outbuf[i >> 1] >> 4) & 0xF);
+          buffer[i+1] = hxd (outbuf[i >> 1] & 0xF);
+        }
+    }
+  buffer[i] = 0;
 }
 
 static void dump8051_data (struct vm8051 *vm)
@@ -92,6 +138,7 @@ static void dump8051_xdata (struct vm8051 *vm, unsigned int page)
 static void dump8051 (struct vm8051 *vm, int minimal)
 {
   uint8_t next_IR[4];
+  char iobuf[512];
 
   printf ("Regs");
   if (!minimal)
@@ -319,8 +366,9 @@ static void dump8051 (struct vm8051 *vm, int minimal)
 #endif
   printf ("----------------------------------------"
           "----------------------------------------\n");
-  for (unsigned int i = 0; i < outbuf_len; i++)
-    printf ("%c", outbuf[i]);
+  write_outbuf (iobuf);
+  for (unsigned int i = 0; i < strlen (iobuf); i++)
+    printf ("%c", iobuf[i]);
   printf ("\n");
   printf ("----------------------------------------"
           "----------------------------------------\n");
@@ -359,7 +407,6 @@ static void wrap_operate8051 (struct vm8051 *vm)
       SCON |= RI_MASK;
       if (inbuf_idx == inbuf_len)
         {
-          printf ("reset here\n");
           inbuf_idx = 0;
           inbuf_len = 0;
           inbuf[0] = 0;
@@ -382,6 +429,7 @@ static void run8051 (struct vm8051 *vm, int minimal)
   unsigned int nbp = 0;
   int command = 0;
   int end = 0;
+  char iobuf[512];
 
   for (i = 0; i < 256; i++)
     {
@@ -551,10 +599,15 @@ static void run8051 (struct vm8051 *vm, int minimal)
           sprint_op (info + strlen (info), IR, PC-IR[3]);
           wrap_operate8051 (vm);
           break;
+        case 'h':
+          /* switch i/o to hex mode or ascii mode */
+          hex_mode ^= 1;
+          sprintf (info, "%s mode set", hex_mode ? "hex" : "ascii");
+          break;
         case '?':
           /* send data (serial port) */
-          scanf ("%1024[^\n]", inbuf + inbuf_len);
-          inbuf_len += strlen (inbuf + inbuf_len);
+          scanf ("%1024[^\n]", iobuf);
+          read_inbuf (iobuf);
           sprintf (info, "string bufferized");
           break;
         case '!':

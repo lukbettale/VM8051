@@ -1,4 +1,4 @@
-/* Copyright (C) 2014, 2015, 2016, 2017 Luk Bettale
+/* Copyright (C) 2014, 2015, 2016, 2017, 2021 Luk Bettale
 
    This file is part of VM8051.
 
@@ -465,6 +465,7 @@ static void run8051 (struct vm8051 *vm, int minimal)
           break;
         case EOF:
           printf ("\n");
+          /* fall through */
         case 'q':
           /* quit */
           end = 1;
@@ -550,6 +551,7 @@ static void run8051 (struct vm8051 *vm, int minimal)
               sprintf (info, "%c: hexadecimal address required", command);
               break;
             }
+          /* fall through */
         case 'c':
           /* continue execution */
           do
